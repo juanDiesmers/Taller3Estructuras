@@ -16,9 +16,13 @@ double distanciaEuclidiana(const Punto& a, const Punto& b) {
 std::vector<std::vector<double>> construirMatrizAdyacencia(const std::vector<Punto>& puntos) {
     int n = puntos.size();
     std::vector<std::vector<double>> matriz(n, std::vector<double>(n));
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++) {
-            matriz[i][j] = distanciaEuclidiana(puntos[i], puntos[j]);
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < n; ++j) {
+            if (i != j) {
+                matriz[i][j] = distanciaEuclidiana(puntos[i], puntos[j]);
+            } else {
+                matriz[i][j] = 0.0;
+            }
         }
     }
     return matriz;
@@ -27,8 +31,8 @@ std::vector<std::vector<double>> construirMatrizAdyacencia(const std::vector<Pun
 void twoOptSwap(std::vector<Punto>& ruta, int i, int k) {
     while (i < k) {
         std::swap(ruta[i], ruta[k]);
-        i++;
-        k--;
+        ++i;
+        --k;
     }
 }
 
@@ -39,22 +43,25 @@ bool twoOpt(std::vector<Punto>& ruta, const std::vector<std::vector<double>>& ma
 
     do {
         improved = false;
-        for (int i = 1; i < ruta.size() - 1; i++) {
-            for (int k = i + 1; k < ruta.size(); k++) {
-                double delta = -matriz[i - 1][i] - matriz[k][k % ruta.size()] + matriz[i - 1][k] + matriz[i][k % ruta.size()];
-                if (delta < 0) {
+        for (int i = 1; i < ruta.size() - 1; ++i) {
+            for (int k = i + 1; k < ruta.size(); ++k) {
+                double delta = matriz[i - 1][i] + matriz[k][(k + 1) % ruta.size()] - matriz[i - 1][k] - matriz[i][(k + 1) % ruta.size()];
+                if (delta > 0) {
                     twoOptSwap(ruta, i, k);
                     improved = true;
                 }
             }
         }
-        iterations++;
+        ++iterations;
     } while (improved && iterations < max_iterations);
 
     return improved;
 }
 
 std::vector<Punto> encontrarRutaMinima(std::vector<Punto>& puntos) {
+    if (puntos.size() < 2) {
+        return puntos;
+    }
     puntos.insert(puntos.begin(), {0, 0}); // Añade el origen al inicio de la lista
     std::vector<Punto> ruta(puntos);
     std::vector<std::vector<double>> matriz = construirMatrizAdyacencia(puntos);
@@ -93,8 +100,6 @@ void guardarGrafos(const std::vector<Punto>& puntos, const std::vector<Punto>& r
     caminoOptimo.close();
 }
 
-
-
 void procesarArchivo(const std::string& nombreArchivo) {
     std::ifstream archivoEntrada(nombreArchivo);
     if (!archivoEntrada) {
@@ -105,15 +110,23 @@ void procesarArchivo(const std::string& nombreArchivo) {
     int n;
     archivoEntrada >> n;
 
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < n; ++i) {
         int m;
         archivoEntrada >> m;
+        if (m == 0) continue; // pasa a la siguiente iteración si no hay agujeros
         std::vector<Punto> agujeros(m);
-        for (int j = 0; j < m; j++) {
+        for (int j = 0; j < m; ++j) {
             archivoEntrada >> agujeros[j].x >> agujeros[j].y;
         }
 
         std::vector<Punto> rutaOptimizada = encontrarRutaMinima(agujeros);
+
+        // Imprimir la ruta optimizada
+        std::cout << "Ruta optimizada para el conjunto " << i + 1 << ":\n";
+        for (const auto& p : rutaOptimizada) {
+            std::cout << "(" << p.x << ", " << p.y << ")\n";
+        }
+
         guardarGrafos(agujeros, rutaOptimizada, "output_" + std::to_string(i));
     }
 
